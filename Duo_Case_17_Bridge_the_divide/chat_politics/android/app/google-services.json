@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "848820772596",
+    "project_id": "chatapppolitics",
+    "storage_bucket": "chatapppolitics.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:848820772596:android:0f4ecf86f1318b9ddac8a1",
+        "android_client_info": {
+          "package_name": "com.example.chat_politics"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDi4fDMfmWaS-22LLeXz--idqUT56R3m2s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
