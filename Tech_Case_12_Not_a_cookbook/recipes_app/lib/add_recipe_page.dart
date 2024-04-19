@@ -149,13 +149,12 @@
 //     );
 //   }
 // }
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:dart_openai/dart_openai.dart'; // Import OpenAI
 import 'database_helper.dart';
 import 'recipe.dart';
-import 'package:http/http.dart' as http;
 
 class AddRecipePage extends StatefulWidget {
   @override
@@ -170,6 +169,13 @@ class _AddRecipePageState extends State<AddRecipePage> {
   String? imagePath;
 
   final ImagePicker _picker = ImagePicker();
+  late OpenAI openAI;
+
+  @override
+  void initState() {
+    super.initState();
+    openAI = OpenAI('YOUR_OPENAI_API_KEY');
+  }
 
   Future getImage() async {
     showDialog(
@@ -218,7 +224,18 @@ class _AddRecipePageState extends State<AddRecipePage> {
 
   Future<void> detectRecipe(String imagePath) async {
     try {
-      final recipeDetails = await getRecipeDetails(imagePath);
+      // Call OpenAI to process the image and generate text
+      final generatedText = await openAI.createCompletion(
+        model: 'text-davinci-003', // Specify the GPT-3 model
+        prompt: "Detect recipe in the image",
+        maxTokens: 100,
+        temperature: 0.7,
+        image: imagePath,
+      );
+
+      // Extract the detected recipe details from the generated text
+      final recipeDetails =
+          parseRecipeDetails(generatedText.choices!.first.text!);
 
       // Update the title and ingredients controllers with the detected recipe details
       setState(() {
@@ -231,54 +248,13 @@ class _AddRecipePageState extends State<AddRecipePage> {
     }
   }
 
-  Future<Map<String, String?>> getRecipeDetails(String imagePath) async {
-    try {
-      // Encode the image to base64
-      List<int> imageBytes = File(imagePath).readAsBytesSync();
-      String base64Image = base64Encode(imageBytes);
-
-      // Make HTTP POST request to OpenAI API
-      final response = await http.post(
-        Uri.parse('https://api.openai.com/v1/completions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization':
-              'Bearer sk-proj-JXynjwNYwHtb6JAp1xAOT3BlbkFJ8Fp2AeMux5w5ulkMGYYj',
-        },
-        body: jsonEncode({
-          'model': 'text-davinci-003',
-          'prompt': 'Detect recipe in the image',
-          'max_tokens': 100,
-          'temperature': 0.7,
-          'image': base64Image,
-        }),
-      );
-
-      // Parse response JSON
-      final Map<String, dynamic> responseData = jsonDecode(response.body);
-      final String generatedText = responseData['choices'][0]['text'];
-
-      // Parse the generated text to extract recipe details
-      final Map<String, String?> recipeDetails =
-          parseRecipeDetails(generatedText);
-
-      return recipeDetails;
-    } catch (e) {
-      print('Error getting recipe details: $e');
-      return {};
-    }
-  }
-
   Map<String, String?> parseRecipeDetails(String generatedText) {
-    // Here you can implement your logic to parse the generated text
-    // and extract recipe details such as title, ingredients, and instructions
-    // For example, you can use regular expressions or string manipulation
-    // For now, let's just return dummy values
-
+    // Implement logic to parse detected recipe details from the generated text
+    // For simplicity, we'll just return a map with dummy values for now
     return {
       'title': 'Detected Recipe Title',
       'ingredients': 'Ingredient 1, Ingredient 2, Ingredient 3',
-      'instructions': 'Step 1: Do something\nStep 2: Do something else',
+      'instructions': 'Step 1, Step 2, Step 3',
     };
   }
 
