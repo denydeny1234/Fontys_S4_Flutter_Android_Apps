@@ -1,7 +1,6 @@
 // import 'dart:io';
-
 // import 'package:flutter/material.dart';
-// import 'package:image_picker/image_picker.dart'; // Import Image Picker
+// import 'package:image_picker/image_picker.dart';
 // import 'database_helper.dart';
 // import 'recipe.dart';
 
@@ -20,7 +19,6 @@
 //   final ImagePicker _picker = ImagePicker();
 
 //   Future getImage() async {
-//     // Show a dialog with options
 //     showDialog(
 //       context: context,
 //       builder: (BuildContext context) {
@@ -59,26 +57,36 @@
 //       setState(() {
 //         imagePath = pickedFile.path;
 //       });
+
+//       // Call a method to process the image and extract recipe details
+//       detectRecipe(imagePath!);
 //     }
 //   }
 
+//   Future<void> detectRecipe(String imagePath) async {
+//     // Simulate parsing detected recipe details
+//     // Here, we'll just set dummy values
+//     final Map<String, String> recipeDetails = {
+//       'title': 'Detected Recipe Title',
+//       'ingredients': 'Ingredient 1, Ingredient 2, Ingredient 3',
+//     };
+
+//     // Update the title and ingredients controllers with the detected recipe details
+//     titleController.text = recipeDetails['title'] ?? '';
+//     ingredientsController.text = recipeDetails['ingredients'] ?? '';
+//   }
+
 //   void addRecipe() async {
-//     print("Trying to add recipe");
 //     if (_formKey.currentState!.validate()) {
-//       print("Form is valid");
 //       Recipe newRecipe = Recipe(
 //         title: titleController.text,
 //         imagePath: imagePath ?? 'assets/images/default.jpg',
 //         ingredients: ingredientsController.text,
 //         instructions: instructionsController.text,
 //       );
-//       print("Recipe to add: ${newRecipe.toMap()}");
+
 //       await DatabaseHelper.instance.create(newRecipe);
-//       print("Recipe added");
-//       Navigator.pop(
-//           context); // This should take you back to the previous screen
-//     } else {
-//       print("Form is not valid");
+//       Navigator.pop(context); // Navigate back to the previous screen
 //     }
 //   }
 
@@ -141,12 +149,13 @@
 //     );
 //   }
 // }
-
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'database_helper.dart';
 import 'recipe.dart';
+import 'package:http/http.dart' as http;
 
 class AddRecipePage extends StatefulWidget {
   @override
@@ -202,22 +211,75 @@ class _AddRecipePageState extends State<AddRecipePage> {
         imagePath = pickedFile.path;
       });
 
-      // Call a method to process the image and extract recipe details
+      // Call method to process the image and extract recipe details
       detectRecipe(imagePath!);
     }
   }
 
   Future<void> detectRecipe(String imagePath) async {
-    // Simulate parsing detected recipe details
-    // Here, we'll just set dummy values
-    final Map<String, String> recipeDetails = {
+    try {
+      final recipeDetails = await getRecipeDetails(imagePath);
+
+      // Update the title and ingredients controllers with the detected recipe details
+      setState(() {
+        titleController.text = recipeDetails['title'] ?? '';
+        ingredientsController.text = recipeDetails['ingredients'] ?? '';
+        instructionsController.text = recipeDetails['instructions'] ?? '';
+      });
+    } catch (e) {
+      print('Error detecting recipe: $e');
+    }
+  }
+
+  Future<Map<String, String?>> getRecipeDetails(String imagePath) async {
+    try {
+      // Encode the image to base64
+      List<int> imageBytes = File(imagePath).readAsBytesSync();
+      String base64Image = base64Encode(imageBytes);
+
+      // Make HTTP POST request to OpenAI API
+      final response = await http.post(
+        Uri.parse('https://api.openai.com/v1/completions'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization':
+              'Bearer sk-proj-JXynjwNYwHtb6JAp1xAOT3BlbkFJ8Fp2AeMux5w5ulkMGYYj',
+        },
+        body: jsonEncode({
+          'model': 'text-davinci-003',
+          'prompt': 'Detect recipe in the image',
+          'max_tokens': 100,
+          'temperature': 0.7,
+          'image': base64Image,
+        }),
+      );
+
+      // Parse response JSON
+      final Map<String, dynamic> responseData = jsonDecode(response.body);
+      final String generatedText = responseData['choices'][0]['text'];
+
+      // Parse the generated text to extract recipe details
+      final Map<String, String?> recipeDetails =
+          parseRecipeDetails(generatedText);
+
+      return recipeDetails;
+    } catch (e) {
+      print('Error getting recipe details: $e');
+      return {};
+    }
+  }
+
+  Map<String, String?> parseRecipeDetails(String generatedText) {
+    // Here you can implement your logic to parse the generated text
+    // and extract recipe details such as title, ingredients, and instructions
+    // For example, you can use regular expressions or string manipulation
+    // For now, let's just return dummy values
+
+    return {
       'title': 'Detected Recipe Title',
       'ingredients': 'Ingredient 1, Ingredient 2, Ingredient 3',
+      'instructions': 'Step 1: Do something\nStep 2: Do something else',
     };
-
-    // Update the title and ingredients controllers with the detected recipe details
-    titleController.text = recipeDetails['title'] ?? '';
-    ingredientsController.text = recipeDetails['ingredients'] ?? '';
   }
 
   void addRecipe() async {
