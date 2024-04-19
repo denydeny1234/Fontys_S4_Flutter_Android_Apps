@@ -37,6 +37,7 @@ dependencies:
   sqflite: any
   path_provider: any
   image_picker: ^1.0.8
+  dart_openai: ^5.1.0
 
 dev_dependencies:
   flutter_test:
