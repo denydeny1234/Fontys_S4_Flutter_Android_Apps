@@ -3,6 +3,7 @@ import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:recipes_app/consts.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -12,13 +13,24 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
+  final _openAI = OpenAI.instance.build(
+    token: OPENAI_API_KEY,
+    baseOption: HttpSetup(
+      receiveTimeout: const Duration(
+        seconds: 5,
+      ),
+    ),
+    enableLog: true,
+  );
+
   final ChatUser _currentUser =
       ChatUser(id: '1', firstName: 'Denisa', lastName: 'Coteanu');
 
-  final ChatUser _gbtChatUser =
-      ChatUser(id: '2', firstName: 'Chat', lastName: 'GBT');
+  final ChatUser _gptChatUser =
+      ChatUser(id: '2', firstName: 'Chat', lastName: 'GPT');
 
   List<ChatMessage> _messages = <ChatMessage>[];
+  List<ChatUser> _typingUsers = <ChatUser>[];
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +38,7 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(0, 116, 126, 1),
         title: const Text(
-          'Gbt Chat',
+          'Gpt Chat',
           style: TextStyle(
             color: Colors.white,
           ),
@@ -34,6 +46,7 @@ class _ChatPageState extends State<ChatPage> {
       ),
       body: DashChat(
           currentUser: _currentUser,
+          typingUsers: _typingUsers,
           messageOptions: const MessageOptions(
             currentUserContainerColor: Colors.black,
             containerColor: Color.fromRGBO(0, 116, 126, 1),
@@ -49,6 +62,41 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> getChatResponse(ChatMessage m) async {
     setState(() {
       _messages.insert(0, m);
+      _typingUsers.add(_gptChatUser);
+    });
+
+    List<Map<String, dynamic>> _messagesHistory = _messages.reversed.map((m) {
+      if (m.user == _currentUser) {
+        return {'role': 'user', 'content': m.text};
+      } else {
+        return {'role': 'assistant', 'content': m.text};
+      }
+    }).toList();
+
+    final request = ChatCompleteText(
+      model: GptTurbo0301ChatModel(),
+      messages: _messagesHistory,
+      maxToken: 200,
+    );
+
+    final response = await _openAI.onChatCompletion(request: request);
+    for (var element in response!.choices) {
+      if (element.message != null) {
+        setState(() {
+          _messages.insert(
+            0,
+            ChatMessage(
+              user: _gptChatUser,
+              createdAt: DateTime.now(),
+              text: element.message!.content,
+            ),
+          );
+        });
+      }
+    }
+
+    setState(() {
+      _typingUsers.remove(_gptChatUser);
     });
   }
 }
